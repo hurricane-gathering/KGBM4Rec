@@ -11,23 +11,19 @@ from torchvision import transforms
 import numpy as np
 import os
 
-# 加载预训练的 ViT-L/16 模型和特征提取器
 model = ViTModel.from_pretrained('google/vit-large-patch16-224-in21k')
 feature_extractor = ViTFeatureExtractor.from_pretrained('google/vit-large-patch16-224-in21k')
 
-# 下载测试图像
 url = "https://example.com/test-image.jpg"
 image = Image.open(requests.get(url, stream=True).raw)
 
-# 预处理图像
 inputs = feature_extractor(images=image, return_tensors="pt")
 
-# 通过ViT模型获取特征表示
 with torch.no_grad():
     outputs = model(**inputs)
     last_hidden_states = outputs.last_hidden_state
 
-print(last_hidden_states.shape)  # 输出形状为 (batch_size, num_patches, hidden_size)
+print(last_hidden_states.shape)  
 
 
 class REBNCONV(nn.Module):
@@ -445,12 +441,11 @@ class U2NET(nn.Module):
     
     
 
-model_path = './saved_models/u2net.pth'  # 已下载的预训练模型
+model_path = './saved_models/u2net.pth'  
 u2net = U2NET()
 u2net.load_state_dict(torch.load(model_path))
 u2net.eval()
 
-# 输入图像的预处理
 transform = transforms.Compose([
     transforms.Resize((320, 320)),
     transforms.ToTensor(),
@@ -458,24 +453,20 @@ transform = transforms.Compose([
 ])
 
 def predict(image_path):
-    # 加载并预处理图像
     image = Image.open(image_path)
-    image = transform(image).unsqueeze(0)  # 添加 batch 维度
+    image = transform(image).unsqueeze(0)  
     
     with torch.no_grad():
-        # U²-Net 预测
+       
         d1, d2, d3, d4, d5, d6, d7 = u2net(image)
         
-        # 使用最高分辨率的输出进行后处理
-        pred = d1[:, 0, :, :]  # 获取第一个通道
+        pred = d1[:, 0, :, :]  
         pred = F.upsample(pred.unsqueeze(0), size=(320, 320), mode='bilinear')
         pred = pred.squeeze().cpu().numpy()
-        pred = (pred - pred.min()) / (pred.max() - pred.min())  # 归一化到 [0, 1]
+        pred = (pred - pred.min()) / (pred.max() - pred.min())  
 
-    # 转换为 PIL Image 并保存结果
     mask = Image.fromarray((pred * 255).astype(np.uint8))
     mask.save('output_mask.png')
     return mask
 
-# 进行分割预测
 mask = predict('test_image.jpg')
